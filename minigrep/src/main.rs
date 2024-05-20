@@ -3,10 +3,8 @@ use std::{env, process};
 use minigrep::Config;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-
     let config: Config;
-    let config_result = Config::build(&args);
+    let config_result = Config::build(env::args());
     match config_result {
         Ok(c) => {
             config = c;
