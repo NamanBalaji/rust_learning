@@ -4,17 +4,17 @@ pub struct LinkedList<T> {
 
 struct Node<T> {
     element: T,
-    next: Link<T>
+    next: Link<T>,
 }
 
 type Link<T> = Option<Box<Node<T>>>;
 
 impl<T> LinkedList<T> {
     fn new() -> Self {
-        Self{head: None}
+        Self { head: None }
     }
 
-    fn push(&mut self, element:T) {
+    fn push(&mut self, element: T) {
         let old_head = self.head.take();
         let new_head = Box::new(Node {
             element,
@@ -37,22 +37,37 @@ impl<T> LinkedList<T> {
     fn peek(&self) -> Option<&T> {
         match &self.head {
             Some(n) => Some(&n.element),
-            None => None
+            None => None,
         }
     }
 
     fn iterator(&self) -> LinkedListIterattor<T> {
-        LinkedListIterattor{
-            next: self.head.as_deref()
+        LinkedListIterattor {
+            next: self.head.as_deref(),
+        }
+    }
+
+    fn iterator_mut(&mut self) -> LinkedListMutableIterattor<T> {
+        LinkedListMutableIterattor {
+            next: self.head.as_deref_mut(),
+        }
+    }
+}
+
+impl<T> Drop for LinkedList<T> {
+    fn drop(&mut self) {
+        let mut link = self.head.take();
+        while let Some(mut n) = link {
+            link = n.next.take();
         }
     }
 }
 
 pub struct LinkedListIterattor<'a, T> {
-    next: Option<&'a Node<T>>
+    next: Option<&'a Node<T>>,
 }
 
-impl<'a, T> Iterator for LinkedListIterattor<'a, T>{
+impl<'a, T> Iterator for LinkedListIterattor<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -61,7 +76,25 @@ impl<'a, T> Iterator for LinkedListIterattor<'a, T>{
                 self.next = n.next.as_deref();
                 Some(&n.element)
             }
-            None=> None
+            None => None,
+        }
+    }
+}
+
+pub struct LinkedListMutableIterattor<'a, T> {
+    next: Option<&'a mut Node<T>>,
+}
+
+impl<'a, T> Iterator for LinkedListMutableIterattor<'a, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.next.take() {
+            Some(node) => {
+                self.next = node.next.as_deref_mut();
+                Some(&mut node.element)
+            }
+            None => None,
         }
     }
 }
@@ -106,6 +139,31 @@ mod tests {
         assert_eq!(iter.next(), Some(&3));
         assert_eq!(iter.next(), Some(&2));
         assert_eq!(iter.next(), Some(&1));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_mutable_iterator() {
+        let mut ll = LinkedList::new();
+        ll.push(1);
+        ll.push(2);
+        ll.push(3);
+
+        let mut iter = ll.iterator_mut();
+        if let Some(value) = iter.next() {
+            *value = 4;
+        }
+        if let Some(value) = iter.next() {
+            *value = 5;
+        }
+        if let Some(value) = iter.next() {
+            *value = 6;
+        }
+
+        let mut iter = ll.iterator_mut();
+        assert_eq!(iter.next(), Some(&mut 4));
+        assert_eq!(iter.next(), Some(&mut 5));
+        assert_eq!(iter.next(), Some(&mut 6));
         assert_eq!(iter.next(), None);
     }
 }
