@@ -1,4 +1,5 @@
 mod game;
+mod ray_attacks;
 
 use game::*;
 
