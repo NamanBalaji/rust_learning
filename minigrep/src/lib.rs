@@ -1,5 +1,4 @@
-use std::{error::Error, fs, env};
-
+use std::{env, error::Error, fs};
 
 pub struct Config {
     pub query: String,
@@ -15,16 +14,16 @@ impl Config {
             Some(arg) => arg,
             None => return Err(String::from("Didn't get query string")),
         };
-        
+
         let file_path = match args.next() {
             Some(arg) => arg,
             None => return Err(String::from("Didn't get file nsme string")),
         };
-      
+
         let ignore_case = env::var("IGNORE_CASE").is_ok();
 
-        Ok(Config{
-            query, 
+        Ok(Config {
+            query,
             file_path,
             ignore_case,
         })
@@ -38,7 +37,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     } else {
         search(&config.query, &contents)
     };
-    
+
     for line in results {
         println!("{line}");
     }
@@ -47,9 +46,10 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 }
 
 pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    contents.lines()
-    .filter(|line| line.contains(query))
-    .collect()
+    contents
+        .lines()
+        .filter(|line| line.contains(query))
+        .collect()
 }
 
 pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
@@ -78,7 +78,7 @@ Trust me.";
     #[test]
     fn one_result() {
         let query = "duct";
-        
+
         assert_eq!(vec!["safe, fast, productive."], search(query, CONTENTS));
     }
 
