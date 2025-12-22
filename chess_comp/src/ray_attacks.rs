@@ -20,7 +20,6 @@ macro_rules! make_rays {
 
         rays
     }};
-
 }
 
 impl Rays {
@@ -35,16 +34,15 @@ impl Rays {
         let se_rays = make_rays!(se_ray);
 
         Self {
-            n_rays: n_rays,
-            e_rays: e_rays,
-            nw_rays: nw_rays,
-            ne_rays: ne_rays,
-            w_rays: w_rays,
-            s_rays: s_rays,
-            sw_rays: sw_rays,
-            se_rays: se_rays,
+            n_rays,
+            e_rays,
+            nw_rays,
+            ne_rays,
+            w_rays,
+            s_rays,
+            sw_rays,
+            se_rays,
         }
-
     }
 }
 
@@ -70,25 +68,22 @@ define_ray!(s_ray, |row, col, offset| (row - offset, col));
 define_ray!(sw_ray, |row, col, offset| (row - offset, col - offset));
 define_ray!(se_ray, |row, col, offset| (row - offset, col + offset));
 
-
-
 fn set_bit(bitboard: &mut u64, row_col: (i8, i8)) {
     let row = row_col.0;
     let col = row_col.1;
-    if row < 1 || row > 8 || col < 1 || col > 8 {
+    if !(1..=8).contains(&row) || !(1..=8).contains(&col) {
         return;
     }
 
-    *bitboard = *bitboard | (1 << ((col - 1) + (row - 1) * 8))
+    *bitboard |= 1 << ((col - 1) + (row - 1) * 8)
 }
-
 
 fn bitboard_to_string(bitboard: u64, mark: Option<usize>) -> String {
     let mut board = String::new();
 
     for r in (0..8).rev() {
         for col in 0..8 {
-            let idx = (r*8) + col;
+            let idx = (r * 8) + col;
             let c = if mark == Some(idx) {
                 'x'
             } else if bitboard & (1u64 << idx) != 0 {
@@ -106,89 +101,128 @@ fn bitboard_to_string(bitboard: u64, mark: Option<usize>) -> String {
     board
 }
 
+fn blocked_ray_attack(ray: u64, ray_family: &Vec<u64>, forward_ray: bool, occupancy: u64) -> u64 {
+
+    if forward_ray {
+let overlap = ray & occupancy;
+let bit_index = bit_sa e
+    } else {
+        todo!()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn print_n_ray() {
+    fn test_blocked_ray() {
+        let mut occupancy = 0;
+        for i in 0..16 {
+            if i == 5 {
+                continue;
+            }
+            occupancy |= 1 << i;
+        }
+        occupancy |= 1 << 22;
+
+        for i in 48..64 {
+            if i == 57 || i == 49 {
+                continue;
+            }
+            occupancy |= 1 << i;
+        }
+
+        occupancy |= 1 << 41;
+        occupancy |= 1 << 42;
+
         let rays = Rays::initialize();
-        let row = 5;
-        let col = 4;
+        let row = 2;
+        let col = 7;
         let idx = (row - 1) * 8 + col - 1;
-        println!(
-            "Here's the bitboard:\n--------------------\n{}\n--------------------",
-            bitboard_to_string(rays.n_rays[idx], Some(idx))
-        );
-    }
+        occupancy |= rays.nw_rays[idx];
 
-    #[test]
-    fn print_se_ray() {
-        let rays = Rays::initialize();
-        let idx = 44;
-        println!(
-            "Here's the bitboard:\n--------------------\n{}\n--------------------",
-            bitboard_to_string(rays.se_rays[idx], Some(idx))
-        );
+        println!("{}", bitboard_to_string(occupancy, Some(idx)));
     }
-
-    #[test]
-    fn print_sw_ray() {
-        let rays = Rays::initialize();
-        let idx = 44;
-        println!(
-            "Here's the bitboard:\n--------------------\n{}\n--------------------",
-            bitboard_to_string(rays.sw_rays[idx], Some(idx))
-        );
-    }
-
-    #[test]
-    fn print_nw_ray() {
-        let rays = Rays::initialize();
-        let idx = 44;
-        println!(
-            "Here's the bitboard:\n--------------------\n{}\n--------------------",
-            bitboard_to_string(rays.nw_rays[idx], Some(idx))
-        );
-    }
-
-    #[test]
-    fn print_ne_ray() {
-        let rays = Rays::initialize();
-        let idx = 44;
-        println!(
-            "Here's the bitboard:\n--------------------\n{}\n--------------------",
-            bitboard_to_string(rays.ne_rays[idx], Some(idx))
-        );
-    }
-
-    #[test]
-    fn print_e_ray() {
-        let rays = Rays::initialize();
-        let idx = 44;
-        println!(
-            "Here's the bitboard:\n--------------------\n{}\n--------------------",
-            bitboard_to_string(rays.e_rays[idx], Some(idx))
-        );
-    }
-
-    #[test]
-    fn print_w_ray() {
-        let rays = Rays::initialize();
-        let idx = 44;
-        println!(
-            "Here's the bitboard:\n--------------------\n{}\n--------------------",
-            bitboard_to_string(rays.w_rays[idx], Some(idx))
-        );
-    }
-
-    #[test]
-    fn print_s_ray() {
-        let rays = Rays::initialize();
-        let idx = 44;
-        println!(
-            "Here's the bitboard:\n--------------------\n{}\n--------------------",
-            bitboard_to_string(rays.s_rays[idx], Some(idx))
-        );
-    }
+    // #[test]
+    // fn print_n_ray() {
+    //     let rays = Rays::initialize();
+    //     let row = 5;
+    //     let col = 4;
+    //     let idx = (row - 1) * 8 + col - 1;
+    //     println!(
+    //         "Here's the bitboard:\n--------------------\n{}\n--------------------",
+    //         bitboard_to_string(rays.n_rays[idx], Some(idx))
+    //     );
+    // }
+    //
+    // #[test]
+    // fn print_se_ray() {
+    //     let rays = Rays::initialize();
+    //     let idx = 44;
+    //     println!(
+    //         "Here's the bitboard:\n--------------------\n{}\n--------------------",
+    //         bitboard_to_string(rays.se_rays[idx], Some(idx))
+    //     );
+    // }
+    //
+    // #[test]
+    // fn print_sw_ray() {
+    //     let rays = Rays::initialize();
+    //     let idx = 44;
+    //     println!(
+    //         "Here's the bitboard:\n--------------------\n{}\n--------------------",
+    //         bitboard_to_string(rays.sw_rays[idx], Some(idx))
+    //     );
+    // }
+    //
+    // #[test]
+    // fn print_nw_ray() {
+    //     let rays = Rays::initialize();
+    //     let idx = 44;
+    //     println!(
+    //         "Here's the bitboard:\n--------------------\n{}\n--------------------",
+    //         bitboard_to_string(rays.nw_rays[idx], Some(idx))
+    //     );
+    // }
+    //
+    // #[test]
+    // fn print_ne_ray() {
+    //     let rays = Rays::initialize();
+    //     let idx = 44;
+    //     println!(
+    //         "Here's the bitboard:\n--------------------\n{}\n--------------------",
+    //         bitboard_to_string(rays.ne_rays[idx], Some(idx))
+    //     );
+    // }
+    //
+    // #[test]
+    // fn print_e_ray() {
+    //     let rays = Rays::initialize();
+    //     let idx = 44;
+    //     println!(
+    //         "Here's the bitboard:\n--------------------\n{}\n--------------------",
+    //         bitboard_to_string(rays.e_rays[idx], Some(idx))
+    //     );
+    // }
+    //
+    // #[test]
+    // fn print_w_ray() {
+    //     let rays = Rays::initialize();
+    //     let idx = 44;
+    //     println!(
+    //         "Here's the bitboard:\n--------------------\n{}\n--------------------",
+    //         bitboard_to_string(rays.w_rays[idx], Some(idx))
+    //     );
+    // }
+    //
+    // #[test]
+    // fn print_s_ray() {
+    //     let rays = Rays::initialize();
+    //     let idx = 44;
+    //     println!(
+    //         "Here's the bitboard:\n--------------------\n{}\n--------------------",
+    //         bitboard_to_string(rays.s_rays[idx], Some(idx))
+    //     );
+    // }
 }
