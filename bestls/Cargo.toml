@@ -1,0 +1,14 @@
+[package]
+name = "bestls"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.53", features = ["derive"] }
+owo-colors = "4.2.3"
+strum = "0.27"
+strum_macros = "0.27"
+tabled = "0.20.0"
+chrono = "0.4.42"
+serde = { version = "1.0", features = ["derive"]}
+serde_json = "1.0"
