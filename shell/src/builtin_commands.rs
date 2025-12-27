@@ -1,0 +1,22 @@
+pub mod builtin_type;
+pub mod echo;
+
+pub type CommandArguments = Vec<String>;
+
+pub enum BuiltinCommand {
+    Echo(CommandArguments),
+    Exit,
+    Type(CommandArguments),
+    NotFound(String),
+}
+
+impl From<(String, CommandArguments)> for BuiltinCommand {
+    fn from((command, arguments): (String, CommandArguments)) -> Self {
+        match command.as_str() {
+            "echo" => Self::Echo(arguments),
+            "exit" => Self::Exit,
+            "type" => Self::Type(arguments),
+            _ => Self::NotFound(command),
+        }
+    }
+}
