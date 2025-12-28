@@ -1,4 +1,7 @@
 mod adventure_game;
+mod blocks;
+mod map;
+mod movement;
 mod player;
 mod point;
 
@@ -8,7 +11,8 @@ use std::time::Duration;
 use termgame::{run_game, GameSettings, KeyCode, SimpleEvent};
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut game = AdventureGame::new();
+    let map = map::parse_map()?;
+    let mut game = AdventureGame::new(map);
 
     run_game(
         &mut game,

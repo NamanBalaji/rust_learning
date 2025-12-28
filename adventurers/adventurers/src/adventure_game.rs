@@ -1,100 +1,141 @@
-use crate::{player::Player, point::Point};
+use crate::{blocks::Blocks, map, movement::Movement, player::Player, point::Point};
 use termgame::{
-    Controller, Game, GameEvent, KeyCode, SimpleEvent, StyledCharacter, ViewportLocation,
+    Controller, Game, GameEvent, GameStyle, Message, SimpleEvent, StyledCharacter, ViewportLocation,
 };
 
-const VIEW_W: i32 = 78;
-const VIEW_H: i32 = 22;
-const MARGIN: i32 = 2;
+pub const VP_SIZE: (i32, i32) = (78, 22);
+pub const VP_BUFFER: i32 = 1;
 
 pub struct AdventureGame {
+    map: map::Map,
     player: Player,
+    over: bool,
 }
 
 impl AdventureGame {
-    pub fn new() -> Self {
+    pub fn new(map: map::Map) -> Self {
         AdventureGame {
+            map,
             player: Player::new(),
+            over: false,
         }
     }
 
-    fn update_player_pos(&mut self, direction: KeyCode) -> Point {
-        let old_pos = self.player.position;
-        self.player.move_player(direction);
+    fn render_on_start(&self, game: &mut Game) {
+        self.map.iter().for_each(|((x, y), b)| {
+            game.set_screen_char(*x, *y, Some(b.clone().into()));
+        });
 
-        old_pos
+        let pos = self.player.get_position();
+        let mv = Movement {
+            start_point: *pos,
+            dest_point: *pos,
+            to_block: self.map.get(&(pos.x, pos.y)).cloned(),
+        };
+        self.render_move(game, &mv);
     }
 
-    fn player_needs_viewport_scroll(&self, game: &Game) -> bool {
+    fn move_viewport(&self, game: &mut Game) {
         let vp = game.get_viewport();
-        let pos = self.player.get_position();
-
-        let rx = pos.x - vp.x;
-        let ry = pos.y - vp.y;
-
-        let left = MARGIN;
-        let right = VIEW_W - 1 - MARGIN;
-        let top = MARGIN;
-        let bottom = VIEW_H - 1 - MARGIN;
-
-        rx < left || rx > right || ry < top || ry > bottom
-    }
-
-    fn compute_adjusted_viewport(&self, game: &Game) -> ViewportLocation {
-        let mut vp = game.get_viewport();
+        let mut vp_x = vp.x;
+        let mut vp_y = vp.y;
 
         let pos = self.player.get_position();
-
-        let rx = pos.x - vp.x;
-        let ry = pos.y - vp.y;
-
-        let left = MARGIN;
-        let right = VIEW_W - 1 - MARGIN;
-        let top = MARGIN;
-        let bottom = VIEW_H - 1 - MARGIN;
-
-        if rx < left {
-            vp.x += rx - left;
-        } else if rx > right {
-            vp.x += rx - right;
+        if pos.x - vp.x == VP_BUFFER {
+            vp_x -= 1;
+        } else if vp.x + VP_SIZE.0 - 1 - pos.x == VP_BUFFER {
+            vp_x += 1;
         }
 
-        if ry < top {
-            vp.y += ry - top;
-        } else if ry > bottom {
-            vp.y += ry - bottom;
+        if pos.y - vp.y == VP_BUFFER {
+            vp_y -= 1;
+        } else if vp.y + VP_SIZE.1 - 1 - pos.y == VP_BUFFER {
+            vp_y += 1;
         }
 
-        vp
+        game.set_viewport(ViewportLocation { x: vp_x, y: vp_y });
     }
 
-    fn render_player(&self, game: &mut Game, old_position: Option<&Point>) {
-        if let Some(p) = old_position {
+    fn on_movement(&mut self, game: &mut Game, mv: &Movement) {
+        if !mv.can_move() {
+            return;
+        }
+
+        self.apply_move(mv);
+        self.render_move(game, mv);
+    }
+
+    fn apply_move(&mut self, mv: &Movement) {
+        self.player.move_to(&mv.dest_point);
+        match mv.to_block {
+            Some(Blocks::Water) => {
+                self.over = self.player.inc_water_count();
+            }
+            Some(Blocks::Object(o)) => {
+                self.player.collect(o);
+                self.map.remove(&(mv.dest_point.x, mv.dest_point.y));
+            }
+            _ => {}
+        }
+        if !matches!(mv.to_block, Some(Blocks::Water)) {
+            self.player.reset_water_count();
+        }
+    }
+
+    fn render_move(&self, game: &mut Game, mv: &Movement) {
+        self.reset_block(game, &mv.start_point);
+        self.format_dest_block(game, mv);
+
+        if let Some(Blocks::Sign(s)) = &mv.to_block {
+            game.set_message(Some(Message::new(s.clone())));
+        }
+
+        self.move_viewport(game);
+
+        if self.over {
+            game.set_message(Some(Message::new(
+                "You drowned! Press any key to exit.".to_owned(),
+            )));
+        }
+    }
+
+    fn format_dest_block(&self, game: &mut Game, mv: &Movement) {
+        let block_style: StyledCharacter;
+        if let Some(b) = &mv.to_block {
+            block_style = StyledCharacter::new(self.player.get_symbol())
+                .style(GameStyle::new().background_color(b.get_color()));
+        } else {
+            block_style = StyledCharacter::new(self.player.get_symbol());
+        }
+        game.set_screen_char(mv.dest_point.x, mv.dest_point.y, Some(block_style));
+    }
+
+    fn reset_block(&self, game: &mut Game, p: &Point) {
+        let b = self.map.get(&(p.x, p.y));
+        if let Some(b) = b {
+            game.set_screen_char(p.x, p.y, Some(b.clone().into()));
+        } else {
             game.set_screen_char(p.x, p.y, None);
         }
-
-        if self.player_needs_viewport_scroll(game) {
-            let new_vp = self.compute_adjusted_viewport(game);
-            game.set_viewport(new_vp);
-        }
-
-        let pos = self.player.get_position();
-
-        let px = pos.x;
-        let py = pos.y;
-        game.set_screen_char(px, py, Some(StyledCharacter::new(self.player.symbol)));
     }
 }
 
 impl Controller for AdventureGame {
     fn on_start(&mut self, game: &mut Game) {
-        self.render_player(game, None);
+        self.render_on_start(game);
     }
 
     fn on_event(&mut self, game: &mut Game, event: GameEvent) {
         if let SimpleEvent::Just(key_event) = event.into() {
-            let old_pos = self.update_player_pos(key_event);
-            self.render_player(game, Some(&old_pos));
+            game.set_message(None);
+            if self.over {
+                game.end_game();
+            }
+
+            match Movement::new(*self.player.get_position(), key_event, &self.map) {
+                Ok(m) => self.on_movement(game, &m),
+                Err(e) => game.set_message(Some(Message::new(e))),
+            }
         }
     }
 

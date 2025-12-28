@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 adventurers_quest = { path = "../adventurers_quest" }
 termgame = "1.0.0"
+ron = "0.12"
+serde = { version = "1", features = ["derive"] }

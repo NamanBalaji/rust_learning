@@ -1,12 +1,12 @@
-use termgame::KeyCode;
-
-use crate::point::{Direction, Point};
+use crate::point::Point;
 
 const PLAYER_SYMBOL: char = '♟';
 
 pub struct Player {
-    pub position: Point,
-    pub symbol: char,
+    position: Point,
+    symbol: char,
+    water_count: u8,
+    collected: Vec<char>,
 }
 
 impl Player {
@@ -14,6 +14,8 @@ impl Player {
         Player {
             position: Point::new(2, 2),
             symbol: PLAYER_SYMBOL,
+            water_count: 0,
+            collected: vec![],
         }
     }
 
@@ -21,13 +23,29 @@ impl Player {
         &self.position
     }
 
-    pub fn move_player(&mut self, direction: KeyCode) {
-        match direction {
-            KeyCode::Up => self.position.move_in_direction(Direction::Up),
-            KeyCode::Down => self.position.move_in_direction(Direction::Down),
-            KeyCode::Left => self.position.move_in_direction(Direction::Left),
-            KeyCode::Right => self.position.move_in_direction(Direction::Right),
-            _ => {}
-        };
+    pub fn get_symbol(&self) -> char {
+        self.symbol
+    }
+
+    pub fn move_to(&mut self, p: &Point) {
+        self.position.x = p.x;
+        self.position.y = p.y;
+    }
+
+    pub fn inc_water_count(&mut self) -> bool {
+        if self.water_count == 10 {
+            return true;
+        }
+        self.water_count += 1;
+
+        self.water_count == 10
+    }
+
+    pub fn reset_water_count(&mut self) {
+        self.water_count = 0;
+    }
+
+    pub fn collect(&mut self, c: char) {
+        self.collected.push(c);
     }
 }
