@@ -1,5 +1,22 @@
-fn main() {
-    println!("Welcome to AdventureRS");
-    println!("To get started, you should read the termgame documentation,");
-    println!("and try out getting a termgame UI to appear on your terminal.");
+mod adventure_game;
+mod player;
+mod point;
+
+use adventure_game::AdventureGame;
+use std::error::Error;
+use std::time::Duration;
+use termgame::{run_game, GameSettings, KeyCode, SimpleEvent};
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let mut game = AdventureGame::new();
+
+    run_game(
+        &mut game,
+        GameSettings::new()
+            .tick_duration(Duration::from_millis(50))
+            .quit_event(Some(SimpleEvent::WithControl(KeyCode::Char('c')).into())),
+    )?;
+
+    println!("Game Ended!");
+    Ok(())
 }
