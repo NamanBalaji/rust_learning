@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use termgame::{GameColor, GameStyle, StyledCharacter};
 
-#[derive(Clone, Deserialize)]
+#[derive(Deserialize)]
 pub enum Blocks {
     Barrier,
     Cinderblock,
@@ -30,8 +30,8 @@ impl Blocks {
     }
 }
 
-impl From<Blocks> for StyledCharacter {
-    fn from(val: Blocks) -> Self {
+impl From<&Blocks> for StyledCharacter {
+    fn from(val: &Blocks) -> Self {
         match val {
             Blocks::Barrier => StyledCharacter::new(' ')
                 .style(GameStyle::new().background_color(Some(GameColor::White))),
@@ -41,7 +41,7 @@ impl From<Blocks> for StyledCharacter {
                 .style(GameStyle::new().background_color(Some(GameColor::Magenta))),
             Blocks::Grass => StyledCharacter::new(' ')
                 .style(GameStyle::new().background_color(Some(GameColor::Green))),
-            Blocks::Object(ch) => StyledCharacter::new(ch),
+            Blocks::Object(ch) => StyledCharacter::new(*ch),
             Blocks::Rock => StyledCharacter::new(' ')
                 .style(GameStyle::new().background_color(Some(GameColor::Gray))),
             Blocks::Sand => StyledCharacter::new(' ')

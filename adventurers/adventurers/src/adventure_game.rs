@@ -23,14 +23,13 @@ impl AdventureGame {
 
     fn render_on_start(&self, game: &mut Game) {
         self.map.iter().for_each(|((x, y), b)| {
-            game.set_screen_char(*x, *y, Some(b.clone().into()));
+            game.set_screen_char(*x, *y, Some(b.into()));
         });
 
         let pos = self.player.get_position();
         let mv = Movement {
             start_point: *pos,
             dest_point: *pos,
-            to_block: self.map.get(&(pos.x, pos.y)).cloned(),
         };
         self.render_move(game, &mv);
     }
@@ -57,7 +56,7 @@ impl AdventureGame {
     }
 
     fn on_movement(&mut self, game: &mut Game, mv: &Movement) {
-        if !mv.can_move() {
+        if !mv.can_move(&self.map) {
             return;
         }
 
@@ -67,17 +66,17 @@ impl AdventureGame {
 
     fn apply_move(&mut self, mv: &Movement) {
         self.player.move_to(&mv.dest_point);
-        match mv.to_block {
+        match mv.get_dest_block(&self.map) {
             Some(Blocks::Water) => {
                 self.over = self.player.inc_water_count();
             }
             Some(Blocks::Object(o)) => {
-                self.player.collect(o);
+                self.player.collect(*o);
                 self.map.remove(&(mv.dest_point.x, mv.dest_point.y));
             }
             _ => {}
         }
-        if !matches!(mv.to_block, Some(Blocks::Water)) {
+        if !matches!(mv.get_dest_block(&self.map), Some(Blocks::Water)) {
             self.player.reset_water_count();
         }
     }
@@ -86,7 +85,7 @@ impl AdventureGame {
         self.reset_block(game, &mv.start_point);
         self.format_dest_block(game, mv);
 
-        if let Some(Blocks::Sign(s)) = &mv.to_block {
+        if let Some(Blocks::Sign(s)) = mv.get_dest_block(&self.map) {
             game.set_message(Some(Message::new(s.clone())));
         }
 
@@ -101,7 +100,7 @@ impl AdventureGame {
 
     fn format_dest_block(&self, game: &mut Game, mv: &Movement) {
         let block_style: StyledCharacter;
-        if let Some(b) = &mv.to_block {
+        if let Some(b) = mv.get_dest_block(&self.map) {
             block_style = StyledCharacter::new(self.player.get_symbol())
                 .style(GameStyle::new().background_color(b.get_color()));
         } else {
@@ -113,7 +112,7 @@ impl AdventureGame {
     fn reset_block(&self, game: &mut Game, p: &Point) {
         let b = self.map.get(&(p.x, p.y));
         if let Some(b) = b {
-            game.set_screen_char(p.x, p.y, Some(b.clone().into()));
+            game.set_screen_char(p.x, p.y, Some(b.into()));
         } else {
             game.set_screen_char(p.x, p.y, None);
         }
@@ -132,7 +131,7 @@ impl Controller for AdventureGame {
                 game.end_game();
             }
 
-            match Movement::new(*self.player.get_position(), key_event, &self.map) {
+            match Movement::new(*self.player.get_position(), key_event) {
                 Ok(m) => self.on_movement(game, &m),
                 Err(e) => game.set_message(Some(Message::new(e))),
             }
