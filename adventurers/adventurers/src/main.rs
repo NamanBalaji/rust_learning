@@ -4,6 +4,7 @@ mod map;
 mod movement;
 mod player;
 mod point;
+mod quests;
 
 use adventure_game::AdventureGame;
 use std::error::Error;
@@ -12,7 +13,9 @@ use termgame::{run_game, GameSettings, KeyCode, SimpleEvent};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let map = map::parse_map()?;
-    let mut game = AdventureGame::new(map);
+    let quest = quests::get_quest()?;
+
+    let mut game = AdventureGame::new(map, quest);
 
     run_game(
         &mut game,

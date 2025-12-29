@@ -1,7 +1,9 @@
+use std::fmt::Display;
+
 use serde::Deserialize;
 use termgame::{GameColor, GameStyle, StyledCharacter};
 
-#[derive(Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub enum Blocks {
     Barrier,
     Cinderblock,
@@ -49,6 +51,22 @@ impl From<&Blocks> for StyledCharacter {
             Blocks::Sign(_) => StyledCharacter::new('💬'),
             Blocks::Water => StyledCharacter::new(' ')
                 .style(GameStyle::new().background_color(Some(GameColor::Blue))),
+        }
+    }
+}
+
+impl Display for Blocks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Blocks::Barrier => write!(f, "Barrier"),
+            Blocks::Cinderblock => write!(f, "Cinderblock"),
+            Blocks::Flowerbush => write!(f, "Flowerbush"),
+            Blocks::Grass => write!(f, "Grass"),
+            Blocks::Object(ch) => write!(f, "'{ch}'"),
+            Blocks::Rock => write!(f, "Rock"),
+            Blocks::Sand => write!(f, "Sand"),
+            Blocks::Sign(msg) => write!(f, "Sign(\"{msg}\")"),
+            Blocks::Water => write!(f, "Water"),
         }
     }
 }

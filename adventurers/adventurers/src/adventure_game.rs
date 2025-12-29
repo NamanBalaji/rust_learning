@@ -1,6 +1,11 @@
-use crate::{blocks::Blocks, map, movement::Movement, player::Player, point::Point};
+use crate::{
+    blocks::Blocks, map, movement::Movement, player::Player, point::Point,
+    quests::game_event::GameEvent as Event,
+};
+use adventurers_quest::{Quest, QuestStatus};
 use termgame::{
-    Controller, Game, GameEvent, GameStyle, Message, SimpleEvent, StyledCharacter, ViewportLocation,
+    Controller, Game, GameEvent, GameStyle, KeyCode, Message, SimpleEvent, StyledCharacter,
+    ViewportLocation,
 };
 
 pub const VP_SIZE: (i32, i32) = (78, 22);
@@ -10,14 +15,18 @@ pub struct AdventureGame {
     map: map::Map,
     player: Player,
     over: bool,
+    won: bool,
+    quest: Box<dyn Quest<Event>>,
 }
 
 impl AdventureGame {
-    pub fn new(map: map::Map) -> Self {
+    pub fn new(map: map::Map, quest: Box<dyn Quest<Event>>) -> Self {
         AdventureGame {
             map,
             player: Player::new(),
             over: false,
+            won: false,
+            quest,
         }
     }
 
@@ -79,6 +88,14 @@ impl AdventureGame {
         if !matches!(mv.get_dest_block(&self.map), Some(Blocks::Water)) {
             self.player.reset_water_count();
         }
+
+        let event = Event {
+            block: mv.get_dest_block(&self.map).cloned(),
+        };
+
+        if self.quest.register_event(&event) == QuestStatus::Complete {
+            self.won = true
+        }
     }
 
     fn render_move(&self, game: &mut Game, mv: &Movement) {
@@ -95,6 +112,17 @@ impl AdventureGame {
             game.set_message(Some(Message::new(
                 "You drowned! Press any key to exit.".to_owned(),
             )));
+
+            return;
+        }
+
+        if self.won {
+            game.set_message(Some(
+                Message::new(String::from(
+                    "You completed all quests! Press any key to quit",
+                ))
+                .title(String::from("You won!")),
+            ));
         }
     }
 
@@ -127,8 +155,15 @@ impl Controller for AdventureGame {
     fn on_event(&mut self, game: &mut Game, event: GameEvent) {
         if let SimpleEvent::Just(key_event) = event.into() {
             game.set_message(None);
-            if self.over {
+            if self.over || self.won {
                 game.end_game();
+            }
+            if matches!(key_event, KeyCode::Char('q')) {
+                game.set_message(Some(
+                    Message::new(self.quest.to_string()).title(String::from("Quest")),
+                ));
+
+                return;
             }
 
             match Movement::new(*self.player.get_position(), key_event) {
