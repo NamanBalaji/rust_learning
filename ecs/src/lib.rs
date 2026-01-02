@@ -1,12 +1,15 @@
+pub mod custom_errors;
+mod entities;
 mod resource;
 
 use std::any::Any;
 
-use crate::resource::Resource;
+use crate::{entities::Entities, resource::Resource};
 
 #[derive(Default)]
 pub struct World {
     resources: Resource,
+    entities: Entities,
 }
 
 impl World {
@@ -45,6 +48,14 @@ impl World {
     /// this point in time.
     pub fn delete_resource<T: Any>(&mut self) {
         self.resources.remove::<T>();
+    }
+
+    pub fn register_component<T: Any>(&mut self) {
+        self.entities.register_component::<T>();
+    }
+
+    pub fn create_entity(&mut self) -> &mut Entities {
+        self.entities.create_entity()
     }
 }
 
