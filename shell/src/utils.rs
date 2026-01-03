@@ -2,7 +2,7 @@ use crate::builtin_commands::BuiltinCommand;
 use anyhow::{Context, Result, bail};
 pub use std::process::exit;
 use std::{
-    env::{self, split_paths},
+    env::{self, home_dir, split_paths},
     fmt::Display,
     fs::{DirEntry, read_dir},
     io::{Write, stdin, stdout},
@@ -28,11 +28,8 @@ pub fn print_prompt() {
 
 pub fn get_command() -> Result<BuiltinCommand> {
     let user_input = get_user_input()?;
-    let mut split_user_input = user_input.split_whitespace();
-    let command_input = split_user_input.next().unwrap_or(" ").to_owned();
-    let arguments = split_user_input
-        .map(ToOwned::to_owned)
-        .collect::<Vec<String>>();
+    let (command_input, argument_input) = extract_command_from_input(user_input);
+    let arguments = parse_arguments(argument_input);
     let command = BuiltinCommand::from((command_input, arguments));
 
     Ok(command)
@@ -90,4 +87,79 @@ pub fn find_executable_file(name: &str, paths: &[PathBuf]) -> Option<DirEntry> {
     }
 
     None
+}
+
+fn extract_command_from_input(input: String) -> (String, String) {
+    let mut command_input = String::new();
+    let mut getting_command = true;
+    let mut arguments = String::new();
+
+    for argument_char in input.trim().chars() {
+        if getting_command {
+            if argument_char.is_whitespace() {
+                getting_command = false;
+            } else {
+                command_input.push(argument_char);
+            }
+        } else {
+            arguments.push(argument_char);
+        }
+    }
+
+    (command_input, arguments)
+}
+
+enum ProcessArgumentsState {
+    InsideSingleQuotes,
+    InsideDoubleQuotes,
+    NotInQuotes,
+}
+
+impl ProcessArgumentsState {
+    pub fn inside_quote(&self) -> bool {
+        matches!(self, Self::InsideSingleQuotes) || matches!(self, Self::InsideDoubleQuotes)
+    }
+}
+
+fn parse_arguments(input: String) -> Vec<String> {
+    let mut result = vec![];
+    let mut current_argument = String::new();
+    let mut state = ProcessArgumentsState::NotInQuotes;
+
+    for argument_char in input.trim().chars() {
+        match argument_char {
+            '\'' => {
+                if matches!(state, ProcessArgumentsState::InsideSingleQuotes) {
+                    state = ProcessArgumentsState::NotInQuotes;
+                } else if matches!(state, ProcessArgumentsState::InsideDoubleQuotes) {
+                    current_argument.push(argument_char);
+                } else {
+                    state = ProcessArgumentsState::InsideSingleQuotes;
+                }
+            }
+            '~' => {
+                if matches!(state, ProcessArgumentsState::InsideSingleQuotes) {
+                    current_argument.push(argument_char);
+                } else {
+                    let home_directory = home_dir().unwrap_or_default();
+                    current_argument.push_str(home_directory.to_str().unwrap_or_default());
+                }
+            }
+            ' ' => {
+                if state.inside_quote() {
+                    current_argument.push(argument_char);
+                } else if !current_argument.is_empty() {
+                    result.push(current_argument.clone());
+                    current_argument.clear();
+                }
+            }
+            _ => current_argument.push(argument_char),
+        }
+    }
+
+    if !current_argument.is_empty() {
+        result.push(current_argument);
+    }
+
+    result
 }

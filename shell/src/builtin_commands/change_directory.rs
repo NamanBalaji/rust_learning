@@ -1,17 +1,15 @@
 use std::{
     env::{home_dir, set_current_dir},
     path::Path,
-    process::exit,
 };
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 
 use crate::utils::print_error;
 
-pub fn chnage_directory(arguments: &[String]) -> Result<()> {
+pub fn change_directory(arguments: &[String]) -> Result<()> {
     let Some(home_directory) = home_dir() else {
-        print_error("Error, you don't seem to have a home directory");
-        exit(1);
+        bail!("Error, you don't seem to have a home directory");
     };
 
     let Some(target_path) = arguments.first() else {
@@ -19,7 +17,6 @@ pub fn chnage_directory(arguments: &[String]) -> Result<()> {
         return Ok(());
     };
 
-    let target_path = target_path.replace("~", home_directory.to_str().unwrap_or_default());
     let target_path = Path::new(&target_path);
     if target_path.is_dir() {
         set_current_dir(target_path)?;

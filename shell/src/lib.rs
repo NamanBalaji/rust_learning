@@ -6,7 +6,7 @@ use anyhow::Result;
 
 use crate::{
     builtin_commands::{
-        BuiltinCommand, builtin_type::builtin_type, change_directory::chnage_directory, echo::echo,
+        BuiltinCommand, builtin_type::builtin_type, change_directory::change_directory, echo::echo,
         pwd::pwd, run_external_executable::run_external_executable,
     },
     errors::CustomErrors,
@@ -22,7 +22,7 @@ pub fn run() -> Result<()> {
         let command = get_command()?;
 
         match command {
-            BuiltinCommand::ChangeDirectory(arguments) => chnage_directory(&arguments)?,
+            BuiltinCommand::ChangeDirectory(arguments) => change_directory(&arguments)?,
             BuiltinCommand::Echo(command_string) => echo(command_string.as_slice()),
             BuiltinCommand::Exit => break,
             BuiltinCommand::Pwd => pwd()?,

@@ -23,7 +23,7 @@ impl From<(String, CommandArguments)> for BuiltinCommand {
             "exit" => Self::Exit,
             "pwd" => Self::Pwd,
             "type" => Self::Type(arguments),
-            _ => Self::NotFound(command, arguments),
+            _ => Self::NotFound(command.to_owned(), arguments),
         }
     }
 }
