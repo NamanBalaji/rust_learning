@@ -137,6 +137,15 @@ fn parse_arguments(input: String) -> Vec<String> {
                     state = ProcessArgumentsState::InsideSingleQuotes;
                 }
             }
+            '"' => {
+                if matches!(state, ProcessArgumentsState::InsideDoubleQuotes) {
+                    state = ProcessArgumentsState::NotInQuotes
+                } else if matches!(state, ProcessArgumentsState::InsideSingleQuotes) {
+                    current_argument.push(argument_char);
+                } else {
+                    state = ProcessArgumentsState::InsideDoubleQuotes;
+                }
+            }
             '~' => {
                 if matches!(state, ProcessArgumentsState::InsideSingleQuotes) {
                     current_argument.push(argument_char);
