@@ -4,26 +4,32 @@ pub mod echo;
 pub mod pwd;
 pub mod run_external_executable;
 
-pub type CommandArguments = Vec<String>;
-
+#[derive(Debug)]
 pub enum BuiltinCommand {
-    ChangeDirectory(CommandArguments),
-    Echo(CommandArguments),
+    ChangeDirectory(Vec<String>),
+    Echo(Vec<String>),
     Exit,
-    Pwd,
-    Type(CommandArguments),
-    NotFound(String, CommandArguments),
+    PWD,
+    Type(Vec<String>),
+    NotFound(String, Vec<String>),
 }
 
-impl From<(String, CommandArguments)> for BuiltinCommand {
-    fn from((command, arguments): (String, CommandArguments)) -> Self {
+impl From<(String, Vec<String>)> for BuiltinCommand {
+    fn from((command, arguments): (String, Vec<String>)) -> Self {
         match command.as_str() {
             "cd" => Self::ChangeDirectory(arguments),
             "echo" => Self::Echo(arguments),
             "exit" => Self::Exit,
-            "pwd" => Self::Pwd,
+            "pwd" => Self::PWD,
             "type" => Self::Type(arguments),
             _ => Self::NotFound(command.to_owned(), arguments),
         }
+    }
+}
+
+impl From<String> for BuiltinCommand {
+    fn from(command: String) -> Self {
+        let arguments = vec![];
+        Self::from((command, arguments))
     }
 }

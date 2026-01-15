@@ -1,17 +1,22 @@
-use crate::{
-    builtin_commands::{BuiltinCommand, CommandArguments, echo::echo},
-    utils::find_executable_file,
-};
+use anyhow::Result;
+
+use crate::{builtin_commands::BuiltinCommand, utils::find_executable_file};
 use std::path::PathBuf;
 
-pub fn builtin_type(arguments: CommandArguments, paths: &[PathBuf]) {
+pub fn builtin_type(
+    arguments: Vec<String>,
+    paths: &[PathBuf],
+    stdout: &mut Vec<String>,
+    stderr: &mut Vec<String>,
+) -> Result<()> {
     let type_input = arguments.first().cloned().unwrap_or_default();
-    let builtin_command = BuiltinCommand::from((type_input.clone(), vec![]));
+    let builtin_command = BuiltinCommand::from(type_input.clone());
     let mut message = vec![];
+    let mut is_error = false;
 
     message.push(type_input.clone());
 
-    if matches!(builtin_command, BuiltinCommand::NotFound(..)) {
+    if matches!(builtin_command, BuiltinCommand::NotFound(_, _)) {
         // search the path to see if we can find an executable
         if let Some(dir_entry) = find_executable_file(&type_input, paths) {
             let path_buf = dir_entry.path();
@@ -24,11 +29,19 @@ pub fn builtin_type(arguments: CommandArguments, paths: &[PathBuf]) {
             message.push(path);
         } else {
             message.push(": not found".to_owned());
-        }
+            is_error = true;
+        };
     } else {
         message.push(" is a shell builtin".to_owned());
     }
 
     let message = message.join("");
-    echo(&[&message]);
+
+    if is_error {
+        stderr.push(message);
+    } else {
+        stdout.push(message);
+    }
+
+    Ok(())
 }

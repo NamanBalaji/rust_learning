@@ -1,36 +1,30 @@
-use crate::{argument_parser::parse_arguments, builtin_commands::BuiltinCommand};
+use crate::command::Command;
 use anyhow::{Context, Result, bail};
 pub use std::process::exit;
 use std::{
     env::{self, split_paths},
-    fmt::Display,
-    fs::{DirEntry, read_dir},
-    io::{Write, stdin, stdout},
+    fs::DirEntry,
+    io::{self, Write, stdin},
     os::unix::fs::MetadataExt,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
-fn get_user_input() -> Result<String> {
+pub fn get_user_input() -> Result<String> {
     let mut user_input = String::new();
-    stdin().read_line(&mut user_input)?;
-
+    stdin()
+        .read_line(&mut user_input)
+        .context("reading user input")?;
     Ok(user_input.trim().to_owned())
-}
-
-pub fn print_error(message: impl Display) {
-    eprintln!("{}", message);
 }
 
 pub fn print_prompt() {
     print!("$ ");
-    stdout().flush().unwrap();
+    io::stdout().flush().unwrap();
 }
 
-pub fn get_command() -> Result<BuiltinCommand> {
+pub fn get_command(standard_out: &mut Vec<String>) -> Result<Command> {
     let user_input = get_user_input()?;
-    let mut arguments = parse_arguments(user_input);
-    let command_input = arguments.remove(0);
-    let command = BuiltinCommand::from((command_input, arguments));
+    let command = Command::new(user_input, standard_out)?;
 
     Ok(command)
 }
@@ -52,17 +46,20 @@ pub fn find_files(name: &str, paths: &[PathBuf]) -> Vec<DirEntry> {
     paths
         .iter()
         .filter_map(|path| {
-            let Ok(directory) = read_dir(path) else {
+            let Ok(directory) = std::fs::read_dir(path) else {
                 return None;
             };
+
             for dir_entry in directory {
                 let Ok(dir_entry) = dir_entry else {
                     continue;
                 };
-
                 let file_name = dir_entry.file_name();
+
                 if name == file_name {
                     return Some(dir_entry);
+                } else {
+                    continue;
                 }
             }
 
@@ -73,9 +70,9 @@ pub fn find_files(name: &str, paths: &[PathBuf]) -> Vec<DirEntry> {
 
 pub fn find_executable_file(name: &str, paths: &[PathBuf]) -> Option<DirEntry> {
     let dir_entries = find_files(name, paths);
+
     for dir_entry in dir_entries {
         let metadata = dir_entry.metadata().ok()?;
-
         let mode = metadata.mode();
         let user_exec = mode & 0o100 != 0;
         let group_exec = mode & 0o010 != 0;
@@ -87,4 +84,43 @@ pub fn find_executable_file(name: &str, paths: &[PathBuf]) -> Option<DirEntry> {
     }
 
     None
+}
+
+pub fn write_all_to_file(messages: &[String], filename: &str) -> Result<()> {
+    let file_path = Path::new(filename);
+    let mut file = std::fs::File::options()
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .open(file_path)?;
+
+    messages
+        .iter()
+        .try_for_each(|message| file.write_all(message.as_bytes()))?;
+
+    Ok(())
+}
+
+pub fn append_all_to_file(messages: &[String], filename: &str) -> Result<()> {
+    let file_path = Path::new(filename);
+    let mut file = std::fs::File::options()
+        .create(true)
+        .append(true)
+        .open(file_path)?;
+
+    if let Ok(metadata) = file.metadata() {
+        if metadata.len() > 0 {
+            file.write(b"\n")
+                .context("writing new line to appended file")?;
+        }
+    } else {
+        bail!("Cannot read open file for appending");
+    }
+
+    messages
+        .iter()
+        .map(|message| message.trim())
+        .try_for_each(|message| file.write_all(message.as_bytes()))?;
+
+    Ok(())
 }

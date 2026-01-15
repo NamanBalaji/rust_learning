@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum CustomErrors {
+pub enum CustomError {
     #[error("{0}: command not found")]
     CommandNotFound(String),
 }

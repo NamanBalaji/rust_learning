@@ -1,42 +1,83 @@
-mod argument_parser;
 mod builtin_commands;
+mod command;
 mod errors;
+pub mod input_parser;
 pub mod utils;
-
-use anyhow::Result;
 
 use crate::{
     builtin_commands::{
         BuiltinCommand, builtin_type::builtin_type, change_directory::change_directory, echo::echo,
         pwd::pwd, run_external_executable::run_external_executable,
     },
-    errors::CustomErrors,
-    utils::{find_executable_file, get_command, get_path, print_error, print_prompt},
+    errors::CustomError,
+    utils::{
+        append_all_to_file, find_executable_file, get_command, get_path, print_prompt,
+        write_all_to_file,
+    },
 };
+use anyhow::{Context, Result};
 
 pub fn run() -> Result<()> {
-    let path = get_path()?;
+    let path = get_path().context("Getting path")?;
+    let mut stdout: Vec<String> = vec![];
+    let mut stderr: Vec<String> = vec![];
 
     loop {
         print_prompt();
 
-        let command = get_command()?;
+        let command = get_command(&mut stderr).context("getting command")?;
 
-        match command {
-            BuiltinCommand::ChangeDirectory(arguments) => change_directory(&arguments)?,
-            BuiltinCommand::Echo(command_string) => echo(command_string.as_slice()),
+        match command.builtin_command {
+            BuiltinCommand::ChangeDirectory(arguments) => {
+                change_directory(&arguments, &mut stderr)?
+            }
+            BuiltinCommand::Echo(command_string) => {
+                echo(command_string.as_slice(), &mut stdout, &mut stderr)?;
+            }
             BuiltinCommand::Exit => break,
-            BuiltinCommand::Pwd => pwd()?,
-            BuiltinCommand::Type(arguments) => builtin_type(arguments, &path),
+            BuiltinCommand::PWD => pwd(&mut stdout, &mut stderr)?,
+            BuiltinCommand::Type(arguments) => {
+                builtin_type(arguments, &path, &mut stdout, &mut stderr)?;
+            }
             BuiltinCommand::NotFound(command_string, arguments) => {
                 if let Some(executable) = find_executable_file(&command_string, &path) {
-                    run_external_executable(executable, &arguments);
+                    run_external_executable(executable, &arguments, &mut stdout, &mut stderr)?;
                 } else {
-                    let error = CustomErrors::CommandNotFound(command_string);
-                    print_error(error);
+                    let error = CustomError::CommandNotFound(command_string);
+                    stderr.push(format!("{error}"));
                 }
             }
         }
+
+        match command.standard_out {
+            command::Output::Standard => {
+                stdout
+                    .iter()
+                    .map(|message| message.trim())
+                    .for_each(|message| println!("{message}"));
+            }
+            command::Output::CreateFile(input) => {
+                write_all_to_file(&stdout, &input).context("redirecting standard out to a file")?
+            }
+            command::Output::AppendFile(input) => append_all_to_file(&stdout, &input)
+                .context("Error appending standard out to a file.")?,
+        }
+
+        match command.standard_error {
+            command::Output::Standard => {
+                stderr
+                    .iter()
+                    .map(|message| message.trim())
+                    .for_each(|message| eprintln!("{message}"));
+            }
+            command::Output::CreateFile(input) => write_all_to_file(&stderr, &input)
+                .context("redirecting standard error to a file")?,
+            command::Output::AppendFile(input) => append_all_to_file(&stderr, &input)
+                .context("Error appending standard error to a file.")?,
+        }
+
+        stderr.clear();
+        stdout.clear();
     }
 
     Ok(())
