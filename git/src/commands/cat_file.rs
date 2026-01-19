@@ -1,13 +1,10 @@
-use std::io::copy;
-
-use anyhow::Context;
-
 use crate::objects::{Kind, Object};
+use anyhow::Context;
 
 pub(crate) fn invoke(pretty_print: bool, object_hash: &str) -> anyhow::Result<()> {
     anyhow::ensure!(
         pretty_print,
-        "mode must be given without -p and we don't support mode"
+        "mode must be given without -p, and we don't support mode"
     );
 
     let mut object = Object::read(object_hash).context("parse out blob object file")?;
@@ -15,15 +12,15 @@ pub(crate) fn invoke(pretty_print: bool, object_hash: &str) -> anyhow::Result<()
         Kind::Blob => {
             let stdout = std::io::stdout();
             let mut stdout = stdout.lock();
-            let n = copy(&mut object.reader, &mut stdout)
+            let n = std::io::copy(&mut object.reader, &mut stdout)
                 .context("write .git/objects file to stdout")?;
             anyhow::ensure!(
                 n == object.expected_size,
-                ".git/object file was npt the expected size (expected: {}, actual: {n} )",
+                ".git/object file was not the expected size (expected: {}, actual: {n})",
                 object.expected_size
             );
         }
-        _ => anyhow::bail!("dont yet know how to print {}", object.kind),
+        _ => anyhow::bail!("don't yet know how to print '{}'", object.kind),
     }
 
     Ok(())

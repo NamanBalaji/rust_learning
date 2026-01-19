@@ -6,11 +6,12 @@ use std::io::Cursor;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
-fn write_tree_for(path: &Path) -> anyhow::Result<Option<[u8; 20]>> {
-    let dir = fs::read_dir(path).with_context(|| format!("open directory {}", path.display()))?;
+pub(crate) fn write_tree_for(path: &Path) -> anyhow::Result<Option<[u8; 20]>> {
+    let mut dir =
+        fs::read_dir(path).with_context(|| format!("open directory {}", path.display()))?;
 
     let mut entries = Vec::new();
-    for entry in dir {
+    while let Some(entry) = dir.next() {
         let entry = entry.with_context(|| format!("bad directory entry in {}", path.display()))?;
         let name = entry.file_name();
         let meta = entry.metadata().context("metadata for directory entry")?;
@@ -65,6 +66,7 @@ fn write_tree_for(path: &Path) -> anyhow::Result<Option<[u8; 20]>> {
         let path = entry.path();
         let hash = if meta.is_dir() {
             let Some(hash) = write_tree_for(&path)? else {
+                // empty directory, so don't include in parent
                 continue;
             };
             hash
